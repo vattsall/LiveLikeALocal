@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
+import { PineconeStore } from "@langchain/pinecone";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import pinecone from "./pinecone.js";
 
 dotenv.config();
 
@@ -9,41 +12,45 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // API key from environment variable
+
+const model = new OpenAI({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  modelName: "gpt-3.5-turbo",
 });
 
-// Predefined questions to ask at the start of every new chat
-const initial_questions = [
-  {
-    role: "system",
-    content: "Please tell me the city or location of your travel.",
-  },
-  { role: "system", content: "How long will you be staying there?" },
-  {
-    role: "system",
-    content:
-      "Are there any particular activities you are interested in? (e.g., food, sightseeing, adventure sports, museums, etc.)",
-  },
-];
+// Initialize Pinecone Store once
+const pineconeIndex = pinecone.index("collab-chat");
+const vectorStore = new PineconeStore(pineconeIndex, new OpenAIEmbeddings());
 
 app.post("/api/chat", async (req, res) => {
   try {
     const { message, is_new_chat } = req.body;
 
-    // Include initial questions only if it's a new chat
+    // Search Pinecone for relevant documents using the initialized vectorStore
+    const results = await vectorStore.similaritySearch(message, 2);
+    const retrievedDocs = results.map((doc) => doc.pageContent).join("\n\n");
+
+    // Construct conversation history
     const conversationHistory = is_new_chat
       ? [...initial_questions, { role: "user", content: message }]
       : [{ role: "user", content: message }];
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: conversationHistory,
-    });
+    // Append retrieved knowledge if available
+    if (retrievedDocs) {
+      conversationHistory.push({
+        role: "system",
+        content: `Relevant information retrieved from knowledge base:\n${retrievedDocs}`,
+      });
+    }
 
-    res.json({ reply: response.choices[0].message.content });
+    // Call OpenAI API using the initialized model
+    const response = await model.call(
+      conversationHistory.map((m) => m.content).join("\n")
+    );
+
+    res.json({ reply: response });
   } catch (error) {
-    console.error("OpenAI API error:", error);
+    console.error("API error:", error);
     res.status(500).json({ error: "Failed to process request" });
   }
 });
