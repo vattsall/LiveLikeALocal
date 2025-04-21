@@ -28,11 +28,11 @@ const Chatbot = () => {
                 <div className="profile">
                     <img src="profile.jpg" alt="Profile Picture" className="profile-pic" />
                     <div className="profile-info">
-                        <h2>Chatbot Name</h2>
+                        <h2>Name</h2>
                         <p>Online</p>
                     </div>
                 </div>
-                <h1>Chat Heading</h1>
+                <h1>Heading</h1>
             </div>
             <div className="chat-body">
                 <div className="chat-messages">
