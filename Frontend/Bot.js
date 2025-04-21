@@ -6,7 +6,7 @@ const Chatbot = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
 
-    const handleSendMessage = () => {
+    const SendMessage = () => {
         if (input.trim() !== '') {
             setMessages([...messages, { text: input, sender: 'user' }]);
             setInput('');
@@ -14,7 +14,7 @@ const Chatbot = () => {
         }
     };
 
-    const handleFileUpload = (event) => {
+    const FileUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
             setMessages([...messages, { text: `File uploaded: ${file.name}`, sender: 'system' }]);
